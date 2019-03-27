@@ -42,12 +42,12 @@ query = list(set(query))
 '''
 	index is the file name of the assigned text to read
 	the method will return a dictionary contains all the words and their frequencies.
-	'word': frequency
+	'document': frequency
 '''
 def get_assigned_text(index):
 	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages//'
 	text = []
-	word = []
+	document = []
 	doc_len = 0
 	
 	with open(dir_path+index, 'r') as file:
@@ -56,10 +56,10 @@ def get_assigned_text(index):
 			text.append(json.loads(line)['text'])
 	
 	for line in text:
-		word.append(Counter(re.findall(r'\w+', line)))
+		document.append(Counter(re.findall(r'\w+', line)))
 		doc_len += len(re.findall(r'\w+', line))
 	
-	return word, doc_len
+	return document, doc_len
 
 '''
 	query is a list contains all the words in the query
@@ -111,18 +111,99 @@ def laplace_smoothing(query, document, doc_len):
 	return result
 
 
+'''
+	add a variable and compute the probability of word w in the collection P(w|c)
+	query is a list contains all the unique word in the claim
+	document is a list contains counters that is a dictionaory with words and their frequencies
+	doc_len is the length of the document
+'''
 def jelinek_smoothing(query, document, doc_len):
+	doc_prob = {}
+	col_prob = {}
+	var_lambda = 0.5
 	
-
-
-def dirichilet_smoothing(query, document, doc_len):
-
-
-
-
-
-
+	for word in query:
+		doc_prob[word] = 0
+		for i in range(len(document)):
+			for k,v in document[i].items():
+				if word == k:
+					doc_prob[word] += v
 	
-
-
+	col_len = 0.0
 	
+	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages//'
+	files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
+	
+	for word in query:
+		col_prob[word] = 0
+	
+	for name in files_name:
+		word_counter = []
+		with open(dir_path+name, 'r') as file:
+			lines = file.readlines()
+			for line in lines:
+				word_counter.append(Counter(re.findall(r'\w+', json.loads(line)['text'])))
+				col_len += len(re.findall(r'\w+', json.loads(line)['text']))
+		
+		for word in query:
+			for i in range(len(word_counter)):
+				for k,v in word_counter[i].items():
+					if word == k:
+						col_prob[word] += v
+			print(word+' tf: '+str(col_prob[word]))
+			
+		print(name+' done, col len: '+str(col_len))
+	
+	result = 1.0
+	for word in query:
+		result *= var_lambda * (doc_prob[word]/doc_len) + (1-var_lambda) * (col_prob[word]/col_len)
+	
+	return result
+
+
+
+def dirichlet_smoothing(query, document, doc_len):
+	const_n = 4000000
+	doc_prob = {}
+	col_prob = {}
+	
+	for word in query:
+		doc_prob[word] = 0
+		for i in range(len(document)):
+			for k,v in document[i].items():
+				if word == k:
+					doc_prob[word] += v
+	
+	col_len = 0.0
+	
+	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages//'
+	files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
+	
+	for word in query:
+		col_prob[word] = 0
+	
+	for name in files_name:
+		word_counter = []
+		with open(dir_path+name, 'r') as file:
+			lines = file.readlines()
+			for line in lines:
+				word_counter.append(Counter(re.findall(r'\w+', json.loads(line)['text'])))
+				col_len += len(re.findall(r'\w+', json.loads(line)['text']))
+		
+		for word in query:
+			for i in range(len(word_counter)):
+				for k,v in word_counter[i].items():
+					if word == k:
+						col_prob[word] += v
+			print(word+' tf: '+str(col_prob[word]))
+			
+		print(name+' done, col len: '+str(col_len))
+		print('')
+		
+	result = 0
+	for word in query:
+		tmp = math.log(((doc_len/(doc_len+const_n)) * (doc_prob[word]/doc_len)) + ((const_n/(doc_len+const_n)) * (col_prob[word]/col_len)) ,10)
+		result += tmp
+		print(word+': '+str(tmp))
+	
+	return result
