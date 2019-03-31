@@ -41,25 +41,25 @@ query = list(set(query))
 
 '''
 	index is the file name of the assigned text to read
-	the method will return a dictionary contains all the words and their frequencies.
-	'document': frequency
+	the method will return a dictionary contains all documetns in a wiki-page and their id
+	'id': document
 '''
 def get_assigned_text(index):
 	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages//'
-	text = []
 	document = []
-	doc_len = 0
 	
 	with open(dir_path+index, 'r') as file:
 		lines = file.readlines()
 		for line in lines:
-			text.append(json.loads(line)['text'])
+			tmp = {}
+			tmpstr = json.loads(line)
+			#id = tmpstr['id']
+			if tmpstr['id'] == '':
+				continue
+			tmp[id] = tmpstr['text']
+			document.append(tmp)
 	
-	for line in text:
-		document.append(Counter(re.findall(r'\w+', line)))
-		doc_len += len(re.findall(r'\w+', line))
-	
-	return document, doc_len
+	return document
 
 '''
 	query is a list contains all the words in the query
