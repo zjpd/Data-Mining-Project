@@ -57,7 +57,7 @@ model = Word2Vec(sentences, size=100, window=5, min_count=1, workers=4)
 model.save("word2vec.model")
 
 vector = []
-intersection = set(claim[0]) & set(sentences)
+#intersection = set(claim[0]) & set(sentences)
 for word in intersection:
 	vector.append(model[word])
 

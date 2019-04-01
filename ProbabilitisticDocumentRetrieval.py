@@ -14,9 +14,24 @@ from os import listdir
 from os.path import isfile, join
 
 wiki_path = 'D://document//UCL//Data Mining//data//wiki-pages//wiki-001.jsonl'
+train_path = 'D://document//UCL//Data Mining//data'
+claim_id = [75397, 150448, 214861, 156709, 129629, 33078, 6744, 226034, 40190, 76253]
 
+data = []
+with open(train_path+'//train.jsonl', 'r') as file:
+	lines = file.readlines()
+	for line in lines:
+		tmp = json.loads(line)
+		for id in claim_id:
+			if tmp['id'] == id:
+				data.append(tmp)
 
+claim = []
+for line in data:
+	claim.append(list(set(re.findall(r'\w+', line['claim'].lower()))))
 
+del data
+gc.collect()
 
 
 doc_len = 0

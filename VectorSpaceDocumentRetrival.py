@@ -16,7 +16,6 @@ from os.path import isfile, join
 
 dir_path = 'D://document//UCL//Data Mining//data//wiki-pages'
 
-
 files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
 
 
