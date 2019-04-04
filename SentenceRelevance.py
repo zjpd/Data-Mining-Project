@@ -36,13 +36,12 @@ del data
 gc.collect()
 
 
+document, doc_len = get_assigned_text('wiki-001.jsonl')
 doc_len = 0
 for k,v in document[0].items():
 	doc = re.findall(r'\w+', v)
 	doc_len = len(doc)
-	doc = dict(Counter(doc))
 
-document, doc_len = get_assigned_text('wiki-001.jsonl')
 count = 0
 sentences = []
 for line in document:
@@ -56,10 +55,11 @@ for line in document:
 model = Word2Vec(sentences, size=100, window=5, min_count=1, workers=4)
 model.save("word2vec.model")
 
-vector = []
+vector = {}
 #intersection = set(claim[0]) & set(sentences)
-for word in intersection:
-	vector.append(model[word])
+for word in doc:
+	vector[word] = model[word]
+	print(word+"; "+str(vector[word]))
 
 '''
 	index is the file name of the assigned text to read
@@ -84,3 +84,33 @@ def get_assigned_text(index):
 			#doc_len += 1
 	
 	return document, doc_len
+
+
+
+'''
+	logistic regression part
+'''
+import numpy as np
+
+'''
+	return  the sigmoid value of z
+'''
+def sigmoid(z):
+	return 1/(1+np.exp(-z))
+	
+	
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
