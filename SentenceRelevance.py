@@ -97,8 +97,26 @@ import numpy as np
 '''
 def sigmoid(z):
 	return 1/(1+np.exp(-z))
-	
-	
+
+def read_data():
+
+'''
+	input is the input data
+	label is the output y
+'''
+def grad_descent(input, label, numIter=150):
+	m, n = np.shape(input)
+	weights = np.ones(n)
+	for i in range(numIter):
+		dataIndex = list(range(m))
+		for j in range(m):
+			alpha = 4 / (1 + i + j) + 0.01 #保证多次迭代后新数据仍然有影响力
+			randIndex = int(np.random.uniform(0, len(dataIndex)))
+			h = sigmoid(sum(input[j] * weights))  # 数值计算
+			error = label[j] - h
+            weights = weights + alpha * error * input[i]
+            del(dataIndex[randIndex])
+	return weights
 
 	
 	
