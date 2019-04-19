@@ -14,6 +14,7 @@ from os import listdir
 from os.path import isfile, join
 from gensim.test.utils import common_texts, get_tmpfile
 from gensim.models import Word2Vec
+import numpy as np
 
 wiki_path = 'D://document//UCL//Data Mining//data//wiki-pages//wiki-001.jsonl'
 train_path = 'D://document//UCL//Data Mining//data'
@@ -28,22 +29,112 @@ with open(train_path+'//train.jsonl', 'r') as file:
 			if tmp['id'] == id:
 				data.append(tmp)
 
-claim = []
+evidence = []
 for line in data:
-	claim.append(list(set(re.findall(r'\w+', line['claim'].lower()))))
+	evidence.append(line['evidence'])
 
+tmp = str(evidence)
+tmp = tmp.replace('[','')
+tmp = tmp.replace(']','')
+evidence = list(eval(tmp))
+
+n=0
+token = []
+while n<len(evidence):
+	if n+4>len(evidence):
+		break
+	
+	token.append(evidence[n+2:n+4])
+	n += 4
+	
 del data
 gc.collect()
 
+train_token = {}
+tmp = set()
+for tmplist in token:
+	tmp.add(tmplist[0])
 
-document, doc_len = get_assigned_text('wiki-001.jsonl')
-doc_len = 0
-for k,v in document[0].items():
-	doc = re.findall(r'\w+', v)
-	doc_len = len(doc)
+tmp = list(tmp)
+for id in tmp:
+	evidencelist = []
+	for tmplist in token:
+		if id == tmplist[0]:
+			evidencelist.append(tmplist[1])
+	train_token[id] = evidencelist
 
-count = 0
-sentences = []
+
+dir_path = 'D://document//UCL//Data Mining//data//wiki-pages'
+files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
+
+
+input_sent = []
+for name in files_name:
+	document = get_assigned_text(name)
+	for line in document:
+		for k,v in line.items():
+			for key, value in train_token.items():
+				if k == key:
+					input_sent.append(retrieveSentences(k,v, value))
+	print(name+' done')
+
+for i in range(len(input_sent)):
+	for j in range(len(input_sent[i])):
+		input_sent[i][j] = input_sent[i][j].replace('\n','')
+		input_sent[i][j] = input_sent[i][j].replace('\t','')
+
+
+def retrieveSentences(id, tmpstr, index):
+
+	tmptext = re.split(r'[0-9]{1,2}\t+', tmpstr)
+	tmptext = tmptext[1:len(tmptext)-1]
+	tmpindex = re.findall(r'[0-9]{1,4}\t+', tmpstr)
+	for i in range(len(tmpindex)):
+		tmpindex[i] = tmpindex[i][0:-1]
+
+	tmp = getSentences(tmptext, tmpindex, 0)
+	
+	sentences = []
+	for item in index:
+		sentences.append(tmp[item])
+	
+	return sentences
+	
+def getSentences(text, index, count):
+	print(index[count], count, len(index))
+	if count >= len(index)-1:
+		return text
+	else:
+		if int(index[count]) != count:
+			text[count-1] += text[count]
+			text.remove(text[count])
+			index.remove(index[count])
+			count -= 1
+		count += 1
+		return getSentences(text, index, count)
+		
+'''
+	index is the file name of the assigned text to read
+	the method will return a dictionary contains all documetns in a wiki-page and their id
+	'id': document
+'''
+def get_assigned_text(index):
+	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages//'
+	document = []
+	
+	with open(dir_path+index, 'r') as file:
+		lines = file.readlines()
+		for line in lines:
+			tmp = {}
+			tmpstr = json.loads(line)
+			if tmpstr['id'] == '':
+				continue
+			tmp[tmpstr['id']] = tmpstr['lines'].lower()
+			document.append(tmp)
+	
+	return document
+		
+
 for line in document:
 	if count >= 5:
 		break
@@ -61,36 +152,14 @@ for word in doc:
 	vector[word] = model[word]
 	print(word+"; "+str(vector[word]))
 
-'''
-	index is the file name of the assigned text to read
-	the method will return a dictionary contains all documetns in a wiki-page and their id
-	'id': document
-'''
-def get_assigned_text(index):
-	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages//'
-	document = []
-	doc_len = 0
-	
-	with open(dir_path+index, 'r') as file:
-		lines = file.readlines()
-		for line in lines:
-			doc_len += 1
-			tmp = {}
-			tmpstr = json.loads(line)
-			if tmpstr['id'] == '':
-				continue
-			tmp[tmpstr['id']] = tmpstr['text'].lower()
-			document.append(tmp)
-			#doc_len += 1
-	
-	return document, doc_len
+
 
 
 
 '''
 	logistic regression part
 '''
-import numpy as np
+
 
 '''
 	return  the sigmoid value of z
@@ -119,6 +188,14 @@ def grad_descent(input, label, numIter=150):
 	return weights
 
 	
+'''
+	input: train_x is a mat datatype, each row stands for one sample
+		   train_y label
+		   opt optimize option
+'''
+def logisticRegression(train_x, train_y, opt):
+
+
 	
 	
 	
