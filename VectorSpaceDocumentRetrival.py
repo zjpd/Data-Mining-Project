@@ -14,10 +14,6 @@ from os import listdir
 from os.path import isfile, join
 
 
-dir_path = 'D://document//UCL//Data Mining//data//wiki-pages'
-
-files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
-
 
 '''
 	index is the file name of the assigned text to read
@@ -122,7 +118,7 @@ def get_claim_tfidf(claim):
 	for word in claim:
 		claim_tfidf[word] = claim_idf[word] * claim_tf[word]
 	
-	return claim_tfidf, doc_len
+	return claim_tfidf
 
 '''
 	claim is the word in that claim, and it is a list
@@ -179,7 +175,7 @@ def read_file_words(name):
 
 
 '''
-	claim and text should be dicts, that claim: 'tfidf', text:'tf,idf' of each word
+	claim and text should be dicts, that claim: 'tfidf', text:'tfidf' of each word
 '''
 def get_cosine(claim, text):
 	intersection = set(claim.keys()) & set(text.keys())
@@ -207,6 +203,70 @@ def get_cosine(claim, text):
 		return numerator / denomiator
 
 
+claim = get_claim()		
+claims_tfidf = []
+for item in claim:
+	claims_tfidf.append(get_claim_tfidf(item))
+
+claim_test = get_claim_tfidf(claim[0])
+
+
+#results = {}
+#tmplist = [0]*5
+#for i in range(10):
+#	results[i] = tmplist
+
+results = []
+for i in range(5):
+	tmp = {}
+	tmp[i] = 0
+	results.append(tmp)
+
+
+def sort_result(result):
+	for i in range(len(result)-1):
+		for j in range(len(result)):
+			for ik,iv in result[i].items():
+				for jk, jv in result[j].items():
+					if jv < jk:
+						tmp = {}
+						tmp[ik] = iv
+						result[i] = result[j]
+						result[j] = tmp
+	return result
+
+
+dir_path = 'D://document//UCL//Data Mining//data//wiki-pages'
+files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
+
+for name in files_name:
+	doc, doc_len = get_assigned_text(name)
+	for line in doc:			#a wiki file to be read
+		for line_key, line_value in line.items():
+			doc_tfidf = get_doc_tfidf(claim[0], line_value, doc_len)
+			cosine = get_cosine(claims_tfidf[0], doc_tfidf)
+			#results[0].sort()
+			#if cosine > results[i][0]:
+			#	results[0].remove[0]
+			#	results[0].append(cosine)
+			print(cosine)
+			tmp = {}
+			tmp[line_key] = cosine
+			result = sort_result(result)
+			for k,v in result[0].items():
+				if cosine>v:
+					result[0] = tmp
+					print(line_key,cosine)
+	print(name+' done!')
+
+				
+for name in files_name:
+	doc, doc_len = get_assigned_text(name)
+	for line in doc:
+		for keys, values in line.items():
+		
 
 
 
+		
+		

@@ -143,6 +143,8 @@ for line in document:
 	count += 1
 
 #path = get_tmpfile("word2vec.model")
+corpus = api.load('wiki-english-20171001')  # download the corpus and return it opened as an iterable
+
 model = Word2Vec(sentences, size=100, window=5, min_count=1, workers=4)
 model.save("word2vec.model")
 
@@ -167,35 +169,111 @@ for word in doc:
 def sigmoid(z):
 	return 1/(1+np.exp(-z))
 
-def read_data():
 
-'''
-	input is the input data
-	label is the output y
-'''
-def grad_descent(input, label, numIter=150):
-	m, n = np.shape(input)
-	weights = np.ones(n)
-	for i in range(numIter):
-		dataIndex = list(range(m))
-		for j in range(m):
-			alpha = 4 / (1 + i + j) + 0.01 #保证多次迭代后新数据仍然有影响力
-			randIndex = int(np.random.uniform(0, len(dataIndex)))
-			h = sigmoid(sum(input[j] * weights))  # 数值计算
-			error = label[j] - h
-            weights = weights + alpha * error * input[i]
-            del(dataIndex[randIndex])
-	return weights
+# weight is a vector with shape (dim, 1)
+# b is a number	
+def initialize_with_zeors(dim):
+	weight = np.zeros((dim, 1))
+	b = 0
+	return weight, b
 
+# includes forward-propagate and backward propagate
+# forward-propagate is aims to calculate the cost
+# backward propagate is to get partial derivatives of W and b from the expression of cost. 
+# we will first find the partial derivative of Ž.
+def propagate(weight, b, x, y):
+	'''
+	weight -- shape: (claim_len+relevance_sentence_len, 1)
+	b -- deviation
+	x -- training data, shape: (claim_relevance_sentence_len, m)
+	y -- label (1, m)
 	
-'''
-	input: train_x is a mat datatype, each row stands for one sample
-		   train_y label
-		   opt optimize option
-'''
-def logisticRegression(train_x, train_y, opt):
+	'''
+	
+	m = x.shape[1]
+	
+	A = sigmoid(np.dot(weight.transpose(), x)+b)
+	cost = -(np.sum(y * np.log(A) + (1-y) * np.log(1-A)))/m
+	
+	dz = A-y
+	dw = (np.dot(x, dz.transpose()))/m
+	db = (np.sum(dz))/m
+	
+	grads = {'dw': dw, 'db':db}
+	
+	return grads, cost
 
 
+def optimize(weight, b, x, y, num_iter, learning_rate, print_cost=false):
+	costs = []
+	
+	for i in range(num_iter):
+		
+		grads, cost = propagate(weight, b, x, y)
+		dw = grads['dw']
+		db = grads['db']
+		
+		weight = weight - learning_rate * dw
+		b = b - learning_rate * db
+		
+		#every 2 times, record the cost
+		if i % 2 == 0:
+			costs.append(cost)
+		
+	params = {'weight': weight, 'b': b}
+	grads = {'dw': dw, 'db': db}
+	
+	return params, grads, costs
+
+
+def predict(weight, b, x):
+	m = x.shape[1]
+	y_prediction = np.zeors((1, m))
+	
+	A = sigmoid(np.dot(weight.transpose(), x)+b)
+	
+	for i in range(m):
+		if A[0, 1] > 0.5:
+			y_prediction[0,i] = 1
+		else:
+			y_prediction[0,i] = 0
+	
+	return y_prediction
+
+
+def logistic_model(x_train, y_train, x_test, y_test, learning_rate=0.1, num_iter = 200):
+	dim = x_train.shape[0]
+	weight, b = initialize_with_zeors(dim)
+	
+	params, grads, costs = optimize(weight, b, x_train, y_train, num_iter, learning_rate, False)
+	weight = params['weight']
+	b = params['b']
+	
+	prediction_train = predict(weight, b, x_test)
+	prediction_test = predict(weight, b, x_train)
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	
 	
 	
