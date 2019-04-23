@@ -15,76 +15,264 @@ from os.path import isfile, join
 from gensim.test.utils import common_texts, get_tmpfile
 from gensim.models import Word2Vec
 import numpy as np
+import gensim.downloader as api
 
 wiki_path = 'D://document//UCL//Data Mining//data//wiki-pages//wiki-001.jsonl'
 train_path = 'D://document//UCL//Data Mining//data'
-claim_id = [75397, 150448, 214861, 156709, 129629, 33078, 6744, 226034, 40190, 76253]
+test_id =  [137334, 111897, 89891, 181634, 219028, 108281, 204361, 54168, 105095, 18708]
 
 data = []
 with open(train_path+'//train.jsonl', 'r') as file:
 	lines = file.readlines()
+	count = 250
 	for line in lines:
 		tmp = json.loads(line)
-		for id in claim_id:
-			if tmp['id'] == id:
-				data.append(tmp)
+		if count%5 == 0:
+			data.append(tmp)
+		
+		count -= 1
+		if count == 0:
+			break
+		
 
-evidence = []
+evidences = []
 for line in data:
-	evidence.append(line['evidence'])
-
-tmp = str(evidence)
-tmp = tmp.replace('[','')
-tmp = tmp.replace(']','')
-evidence = list(eval(tmp))
-
-n=0
-token = []
-while n<len(evidence):
-	if n+4>len(evidence):
-		break
+	tmp = {}
+	tmpstr = str(line['evidence'])
+	tmpstr = tmpstr.replace('[','')
+	tmpstr = tmpstr.replace(']','')
+	tmpstr = list(eval(tmpstr))
 	
-	token.append(evidence[n+2:n+4])
-	n += 4
+	tmplist = []
+	n = 0
+	while n < len(tmpstr):
+		if n+4 > len(tmpstr):
+			break
+		
+		tmplist.append(tmpstr[n+2: n+4])
+		n += 4
+	
+	tmp[line['id']] = tmplist
+	evidences.append(tmp)
 	
 del data
 gc.collect()
 
-train_token = {}
-tmp = set()
-for tmplist in token:
-	tmp.add(tmplist[0])
+#path = get_tmpfile("word2vec.model")
+corpus = api.load('glove-wiki-gigaword-300')
+model = api.load('glove-wiki-gigaword-300')
+model = Word2Vec(corpus)
 
-tmp = list(tmp)
-for id in tmp:
-	evidencelist = []
-	for tmplist in token:
-		if id == tmplist[0]:
-			evidencelist.append(tmplist[1])
-	train_token[id] = evidencelist
+def getTestEvidence(test_id):
+	data = []
+	with open(train_path+'//shared_task_dev.jsonl', 'r') as file:
+		lines = file.readlines()
+		for line in lines:
+			tmp = json.loads(line)
+			for id in test_id:
+				if tmp['id'] == id:
+					data.append(tmp['evidence'])
+	
+	test_evi = []
+	for i in range(len(data)):
+		tmpdict = {}
+		tmp = str(data[i])
+		tmp = tmp.replace('[','')
+		tmp = tmp.replace(']','')
+		tmp = list(eval(tmp))
+	
+		tmplist = []
+		n = 0
+		while n < len(tmp):
+			if n+4 > len(tmp):
+				break
+		
+			tmplist.append(tmp[n+2: n+4])
+			n += 4
+		
+		tmpdict[test_id[i]] = tmplist
+		test_evi.append(tmpdict)
+		
+	return test_evi
+
+	
+	
+test_evi = getTestEvidence(test_id)
+	
+
+def getXVector(evidences, model):
+	x_vector = []
+	for evi in evidences:
+		for key, value in evi.items():
+			claim_id, result = retrievePositive(key, value)
+			result_word = []
+			for line in result:
+				line = str(result)
+				line = line.replace('\t','')
+				line = line.replace('\n','')
+				result_word.append(re.findall(r'\w+', line))
+		
+			vector = []
+			for line in result_word:
+				for word in line:
+					try:
+						vector.append(model[word])
+					except KeyError:
+						print (word+' not in the vocabulary')
+		
+			x_vector.append(vector)
+	
+	return x_vector
+	
+x_test_p = getXVector(test_evi, model)
+x_test = np.zeros((len(x_test_p), 1))
+for i in range(len(x_test_p)):
+	x_test[i] = np.sum(np.array(x_test_p[i]))
+	
+y_test = np.ones((len(x_test), 1))
+
+texts = retrieveNegative()
+neg_word = []
+for line in texts:
+	line = line.replace('\t','')
+	line = line.replace('\n','')
+	neg_word.append(re.findall(r'\w+', line))
+
+x_test_n = []
+vector = []
+for line in neg_word:
+	for word in line:
+		try:
+			vector.append(model[word])
+		#print(word+"; "+str(vector[word]))
+		except KeyError:
+			print (word+' not in the vocabulary')
+	x_test_n.append(vector)
+	
+for i in range(len(x_test_n)):
+	x_test = np.append(x_test, np.sum(np.array(x_test_n[i])))
+
+y_tmp = np.zeros((len(x_test_n), 1))
+y_test = np.append(y_test, y_tmp)
+
+x_test = np.reshape(x_test, (len(x_test), 1))
+y_test = np.reshape(y_test, (len(y_test), 1))
 
 
-dir_path = 'D://document//UCL//Data Mining//data//wiki-pages'
-files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
+'''
+	get x,y train part
+'''
+	
+x_train_p = []
+for evi in evidences:
+	for key, value in evi.items():
+		claim_id, result = retrievePositive(key, value)
+		result_word = []
+		for line in result:
+			line = str(result)
+			line = line.replace('\t','')
+			line = line.replace('\n','')
+			result_word.append(re.findall(r'\w+', line))
+		
+		vector = []
+		for line in result_word:
+			for word in line:
+				try:
+					vector.append(model[word])
+				except KeyError:
+					print (word+' not in the vocabulary')
+		
+		x_train_p.append(vector)
 
 
-input_sent = []
-for name in files_name:
-	document = get_assigned_text(name)
-	for line in document:
-		for k,v in line.items():
-			for key, value in train_token.items():
-				if k == key:
-					input_sent.append(retrieveSentences(k,v, value))
-	print(name+' done')
+x_train = np.zeros((len(x_train_p), 1))
+for i in range(len(x_train_p)):
+	x_train[i] = np.sum(np.array(x_train_p[i]))
 
-for i in range(len(input_sent)):
-	for j in range(len(input_sent[i])):
-		input_sent[i][j] = input_sent[i][j].replace('\n','')
-		input_sent[i][j] = input_sent[i][j].replace('\t','')
+y_train = np.ones((len(x_train), 1))
+
+texts = retrieveNegative()
+neg_word = []
+for line in texts:
+	line = line.replace('\t','')
+	line = line.replace('\n','')
+	neg_word.append(re.findall(r'\w+', line))
+
+x_train_n = []
+vector = []
+for line in neg_word:
+	for word in line:
+		try:
+			vector.append(model[word])
+		#print(word+"; "+str(vector[word]))
+		except KeyError:
+			print (word+' not in the vocabulary')
+	x_train_n.append(vector)
+	
+for i in range(len(x_train_n)):
+	x_train = np.append(x_train, np.sum(np.array(x_train_n[i])))
+
+y_tmp = np.zeros((len(x_train_n), 1))
+y_train = np.append(y_train, y_tmp)
+	
+def retrieveNegative():
+	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages'
+	files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
+	
+	texts = []
+	for name in files_name:
+		doc = get_assigned_text(name,'lines')
+		random_index = np.random.randint(0, len(doc), 10)
+		for index in random_index:
+			for k,v in doc[index].items():
+				flag, tmp = retrieveRandSent(v)
+				if flag:
+					texts.append(tmp)
+				else:
+					continue
+		
+		print(name+' done!')
+	
+	return texts
+	
 
 
-def retrieveSentences(id, tmpstr, index):
+'''
+	return a positive sentences of the given claim that includes the words. 
+	input the sentence id and sentence id in the evidence_list
+	input the claim id
+'''
+def retrievePositive(claim_id, evidence_list):
+	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages'
+	files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
+	
+	line_list = []
+	for name in files_name:
+		doc = get_assigned_text(name,'lines')
+		for line in doc:
+			for id, lines in line.items():
+				for evidence in evidence_list:
+					if str(id) == evidence[0]:
+						line_list.append(retrieveSentences(lines, evidence[1]))
+		print(name+' done')
+	
+	return claim_id, line_list
+
+def retrieveRandSent(tmpstr):
+	tmptext = re.split(r'[0-9]{1,2}\t+', tmpstr)
+	tmptext = tmptext[1:len(tmptext)-1]
+	tmpindex = re.findall(r'[0-9]{1,4}\t+', tmpstr)
+	for i in range(len(tmpindex)):
+		tmpindex[i] = tmpindex[i][0:-1]
+
+	tmp = getSentences(tmptext, tmpindex, 0)
+	if len(tmp) == 0:
+		return False, tmp
+	else:
+		randindex = np.random.randint(0, len(tmp), 1)
+		return True, tmp[randindex[0]]
+
+def retrieveSentences(tmpstr, index):
 
 	tmptext = re.split(r'[0-9]{1,2}\t+', tmpstr)
 	tmptext = tmptext[1:len(tmptext)-1]
@@ -94,14 +282,13 @@ def retrieveSentences(id, tmpstr, index):
 
 	tmp = getSentences(tmptext, tmpindex, 0)
 	
-	sentences = []
-	for item in index:
-		sentences.append(tmp[item])
-	
-	return sentences
-	
+	return tmp[index]
+
+'''
+	remove the mis matched sentences by sorting the index of each sentence
+'''
 def getSentences(text, index, count):
-	print(index[count], count, len(index))
+	#print(index[count], count, len(index))
 	if count >= len(index)-1:
 		return text
 	else:
@@ -111,14 +298,15 @@ def getSentences(text, index, count):
 			index.remove(index[count])
 			count -= 1
 		count += 1
-		return getSentences(text, index, count)
+		return getSentences(text, index, count)	
+
 		
 '''
 	index is the file name of the assigned text to read
-	the method will return a dictionary contains all documetns in a wiki-page and their id
-	'id': document
+	the method will return a dictionary contains all documents in a wiki-page and their id
+	'id': lines
 '''
-def get_assigned_text(index):
+def get_assigned_text(index, label):
 	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages//'
 	document = []
 	
@@ -129,32 +317,11 @@ def get_assigned_text(index):
 			tmpstr = json.loads(line)
 			if tmpstr['id'] == '':
 				continue
-			tmp[tmpstr['id']] = tmpstr['lines'].lower()
+			tmp[tmpstr['id']] = tmpstr[label].lower()
 			document.append(tmp)
 	
 	return document
 		
-
-for line in document:
-	if count >= 5:
-		break
-	for k,v in line.items():
-		sentences.append(re.findall(r'\w+', v))
-	count += 1
-
-#path = get_tmpfile("word2vec.model")
-corpus = api.load('wiki-english-20171001')  # download the corpus and return it opened as an iterable
-
-model = Word2Vec(sentences, size=100, window=5, min_count=1, workers=4)
-model.save("word2vec.model")
-
-vector = {}
-#intersection = set(claim[0]) & set(sentences)
-for word in doc:
-	vector[word] = model[word]
-	print(word+"; "+str(vector[word]))
-
-
 
 
 
@@ -204,7 +371,7 @@ def propagate(weight, b, x, y):
 	return grads, cost
 
 
-def optimize(weight, b, x, y, num_iter, learning_rate, print_cost=false):
+def optimize(weight, b, x, y, num_iter, learning_rate, print_cost=False):
 	costs = []
 	
 	for i in range(num_iter):
@@ -227,32 +394,35 @@ def optimize(weight, b, x, y, num_iter, learning_rate, print_cost=false):
 
 
 def predict(weight, b, x):
-	m = x.shape[1]
-	y_prediction = np.zeors((1, m))
+	m = x.shape[0]
+	y_prediction = np.zeros((m, 1))
 	
 	A = sigmoid(np.dot(weight.transpose(), x)+b)
 	
 	for i in range(m):
-		if A[0, 1] > 0.5:
-			y_prediction[0,i] = 1
+		if A[i, 0] > 0.5:
+			y_prediction[i,0] = 1
 		else:
-			y_prediction[0,i] = 0
+			y_prediction[i,0] = 0
 	
 	return y_prediction
 
 
 def logistic_model(x_train, y_train, x_test, y_test, learning_rate=0.1, num_iter = 200):
-	dim = x_train.shape[0]
-	weight, b = initialize_with_zeors(dim)
+dim = x_train.shape[0]
+weight, b = initialize_with_zeors(dim)
 	
-	params, grads, costs = optimize(weight, b, x_train, y_train, num_iter, learning_rate, False)
-	weight = params['weight']
-	b = params['b']
+params, grads, costs = optimize(weight, b, x_train, y_train, num_iter, learning_rate, False)
+weight = params['weight']
+b = params['b']
 	
-	prediction_train = predict(weight, b, x_test)
-	prediction_test = predict(weight, b, x_train)
-	
-	
+tmp = weight[:len(x_test), :len(x_test)]
+
+prediction_train = predict(tmp, b, x_test)
+prediction_test = predict(weight, b, x_train)
+
+accuracy_train = 1 - np.mean(np.abs(prediction_train - y_train))
+
 	
 	
 	

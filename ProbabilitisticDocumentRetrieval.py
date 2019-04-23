@@ -62,6 +62,7 @@ def test_laplace():
 	del data
 	gc.collect()
 	
+	results = []
 	
 	for cl in claim:
 		prob_result = {}
@@ -78,9 +79,14 @@ def test_laplace():
 		
 		prob_result = sorted((value,key) for (key,value) in prob_result.items())
 		print(prob_result[-6:])
-		break
-	
-	
+		results.append(prob_result[-20:])
+		
+	return results
+
+testtmp = {}
+for i in range(20):
+	testtmp[i] = i
+testtmp = sorted((value,key) for (key,value) in testtmp.items())
 	
 '''
 	index is the file name of the assigned text to read
