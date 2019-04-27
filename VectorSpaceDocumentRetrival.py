@@ -20,24 +20,21 @@ from os.path import isfile, join
 	the method will return a dictionary contains all documetns in a wiki-page and their id
 	'id': document
 '''
-def get_assigned_text(index):
+def get_assigned_text(index, label):
 	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages//'
-	document = []
-	doc_len = 0
+	id = []
+	return_lines = []
 	
 	with open(dir_path+index, 'r') as file:
 		lines = file.readlines()
 		for line in lines:
-			doc_len += 1
-			tmp = {}
 			tmpstr = json.loads(line)
 			if tmpstr['id'] == '':
 				continue
-			tmp[tmpstr['id']] = tmpstr['text'].lower()
-			document.append(tmp)
-			#doc_len += 1
+			id.append(tmpstr['id'].lower())
+			return_lines.append(tmpstr[label])
 	
-	return document, doc_len
+	return id, return_lines
 
 '''
 	return all the required claims in a list
@@ -79,99 +76,113 @@ def cal_idf(word, words):
 
 
 '''
-	claim is the word in that claim, which is a list
-	And will return a dict: 'word':'tfidf'
+	claim is a list contains 10 claims, each claim is a list contains words in that claim
+	And will return a list contains 10 dict: 'word':'tfidf'
 '''
 def get_claim_tfidf(claim):
-	claim_idf = {}
-	claim_tf = {}
+	claim_idf = []
+	claim_tf = []
 	
-	claim_cnt = dict(Counter(claim))
-	claim = set(claim)
-	for word in claim:
-		claim_tf[word] = (claim_cnt[word]/len(claim))
+	for i in range(len(claim)):
+		claim_cnt = dict(Counter(claim[i]))
+		tmp = set(claim[i])
+		tmpdict = {}
+		for word in tmp:
+			tmpdict[word] = claim_cnt[word] / len(tmp)
+		claim_tf.append(tmpdict)
+	
 	
 	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages//'
 	files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
 	
-	for word in claim:
-		claim_idf[word] = 0
-	
-	doc_len = 0
-	
-	for name in files_name:
-		document, tmp_len = get_assigned_text(name)
-		doc_len += tmp_len
-		print(name+' done! doc len: '+str(doc_len))
-		for line in document:
-			#print('type: '+str(type(line))+' and: '+str(line))
-			for id in line:
-				words = re.findall(r'\w+', line[id])
-				for word in claim:
-					claim_idf[word] += cal_idf(word, words)
-				
-	for word in claim:
-		claim_idf[word] = math.log(doc_len/claim_idf[word] ,10)
+	for i in range(len(claim)):
+		tmpdict = {}
+		for word in claim[i]:
+			tmpdict[word] = 0
+		claim_idf.append(tmpdict)
 
-	claim_tfidf = {}
+	doc_len = 0
+	for name in files_name:
+		id, doc = get_assigned_text(name, 'text')
+		doc_len += len(doc)
+		print(name+' done! doc len: '+str(doc_len))
+		for i in range(len(doc)):
+			words = re.findall(r'\w+', doc[i])
+			for j in range(len(claim)):
+				for word in claim[j]:
+					claim_idf[j][word] += cal_idf(word, words)
+				
+	for i in range(len(claim)):
+		tmp = set(claim[i])
+		for word in tmp:
+			try:
+				claim_idf[i][word] = math.log(doc_len/claim_idf[i][word] ,10)
+			except ZeroDivisionError:
+				print(word, claim_idf[i][word])
+			#break
+		
+	claim_tfidf = []
 	count = 0
-	for word in claim:
-		claim_tfidf[word] = claim_idf[word] * claim_tf[word]
-	
-	return claim_tfidf
+	for i in range(len(claim)):
+		tmp = list(set(claim[i]))
+		tmpdict = {}
+		for word in tmp:
+			tmpdict[word] = claim_idf[i][word] * claim_tf[i][word]
+		claim_tfidf.append(tmpdict)
+		
+	return claim_tfidf, claim_idf
 
 '''
 	claim is the word in that claim, and it is a list
 	document is a string, doc_len is the length of all documents in the collection
 	
 '''
-def get_doc_tfidf(claim, document, doc_len):
+def cal_tfidf(claim, claim_idf, claim_tfidf):
 	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages'
+	output_path = 'D://document//UCL//Data Mining//results'
 	files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
-	doc_tf = {}	
-	doc_idf = {}
 
-	document = re.findall(r'\w+', document)
-	doc_cnt = dict(Counter(document))
-	claim = set(claim)	
-	intersection = set(claim) & set(document)
-	for word in intersection:
-		doc_tf[word] = doc_cnt[word]/len(document)
-	
-	
-	for word in intersection:
-		doc_idf[word] = 0
-
-	for name in files_name:
-		document, tmp_len = get_assigned_text(name)
-		print(name+' done!')
-		for line in document:
-			#print('type: '+str(type(line))+' and: '+str(line))
-			for id in line:
-				words = re.findall(r'\w+', line[id])
+	for i in range(len(claim)):
+		cos_res = []
+		doc_id = {}
+		for k in range(10):
+			cos_res.append(0)
+		
+		for name in files_name:
+			id, doc = get_assigned_text(name, 'text')
+			for j in range(len(doc)):
+				words = re.findall(r'\w+', doc[j])
+				doc_cnt = dict(Counter(words))
+				intersection = set(words) & set(claim[i])
+				tmp_tf = {}
+				tmp_idf = {}
+				tmp_tfidf = {}
 				for word in intersection:
-					doc_idf[word] += cal_idf(word, words)
-
-	for word in intersection:
-		doc_idf[word] = math.log(doc_len/doc_idf[word], 10)
-	
-	doc_tfidf = {}
-	for word in intersection:
-		doc_tfidf[word] = doc_tf[word] * doc_idf[word]
-	
+					tmp_tf[word] = doc_cnt[word]/len(doc[j])
+					tmp_idf[word] = claim_idf[i][word]
+					tmp_tfidf[word] = tmp_tf[word] * tmp_idf[word]
+		
+				cosine = get_cosine(claim_tfidf[i], tmp_tfidf)
+		
+				cos_res.sort()
+				if cosine > cos_res[0]:
+					for k,v in doc_id.copy().items():
+						if cos_res[0] == v:
+							del doc_id[k]
+					cos_res = cos_res[1:]
+					cos_res.append(cosine)
+					doc_id[id[j]] = cosine
+			print(name+' done')
+		
+		with io.open(output_path+'//cosine'+str(i)+'.txt', 'w', encoding='utf8') as file:
+			for k,v in doc_id.items():
+				file.write(str(k)+"\t"+str(v)+"\n")
+				print(k,v)
+		print('claim '+str(i)+' done')
+			
 	return doc_tfidf
 		
 
-def read_file_words(name):
-	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages//'
-	
-	file_words = []
-	with io.open(dir_path+name) as file:
-		lines = file.readlines()
-		for line in lines:
-			file_words.append(re.findall(r'\w+',json.loads(line)['text']))
-	
-	return file_words
 
 
 '''
@@ -183,19 +194,19 @@ def get_cosine(claim, text):
 	for word in intersection:
 		numerator += (claim[word] * text[word])
 		
-		print ('word: '+word+' value: '+str(claim[word] * text[word]))
-		print('numerator: '+str(numerator))
-		print()
+		#print ('word: '+word+' value: '+str(claim[word] * text[word]))
+		#print('numerator: '+str(numerator))
+		#print()
 	
 	var1 = 0
 	var2 = 0
-	for word in claim:
+	for word in claim.keys():
 		var1 += math.pow(claim[word], 2)
-	for word in text:
+	for word in text.keys():
 		var2 += math.pow(text[word], 2)
 	
 	denomiator = math.sqrt(var1) * math.sqrt(var2)
-	print('denomiator: '+str(denomiator))
+	#print('denomiator: '+str(denomiator))
 	
 	if numerator == 0:
 		return 0.0
@@ -203,68 +214,9 @@ def get_cosine(claim, text):
 		return numerator / denomiator
 
 
-claim = get_claim()		
-claims_tfidf = []
-for item in claim:
-	claims_tfidf.append(get_claim_tfidf(item))
-
-claim_test = get_claim_tfidf(claim[0])
 
 
-#results = {}
-#tmplist = [0]*5
-#for i in range(10):
-#	results[i] = tmplist
 
-results = []
-for i in range(5):
-	tmp = {}
-	tmp[i] = 0
-	results.append(tmp)
-
-
-def sort_result(result):
-	for i in range(len(result)-1):
-		for j in range(len(result)):
-			for ik,iv in result[i].items():
-				for jk, jv in result[j].items():
-					if jv < jk:
-						tmp = {}
-						tmp[ik] = iv
-						result[i] = result[j]
-						result[j] = tmp
-	return result
-
-
-dir_path = 'D://document//UCL//Data Mining//data//wiki-pages'
-files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
-
-for name in files_name:
-	doc, doc_len = get_assigned_text(name)
-	for line in doc:			#a wiki file to be read
-		for line_key, line_value in line.items():
-			doc_tfidf = get_doc_tfidf(claim[0], line_value, doc_len)
-			cosine = get_cosine(claims_tfidf[0], doc_tfidf)
-			#results[0].sort()
-			#if cosine > results[i][0]:
-			#	results[0].remove[0]
-			#	results[0].append(cosine)
-			print(cosine)
-			tmp = {}
-			tmp[line_key] = cosine
-			result = sort_result(result)
-			for k,v in result[0].items():
-				if cosine>v:
-					result[0] = tmp
-					print(line_key,cosine)
-	print(name+' done!')
-
-				
-for name in files_name:
-	doc, doc_len = get_assigned_text(name)
-	for line in doc:
-		for keys, values in line.items():
-		
 
 
 

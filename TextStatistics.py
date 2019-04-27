@@ -6,95 +6,101 @@ import sys
 import re
 import io
 import gc
+import numpy as np
 from tqdm import tqdm
 from collections import Counter
 from nltk import word_tokenize
 from os import listdir
 from os.path import isfile, join
 
-wiki_path = 'D://document//UCL//Data Mining//data//wiki-pages//wiki-001.jsonl'
-dir_path = 'D://document//UCL//Data Mining//data//wiki-pages'
-output_path = 'D://document//UCL//Data Mining//results'
 
-files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
-
-data = []
-for i in range(len(files_name)):
-	with open(dir_path+'//'+files_name[i], 'r') as file:
+def get_assigned_text(index, label):
+	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages//'
+	id = []
+	return_lines = []
+	
+	with open(dir_path+index, 'r') as file:
 		lines = file.readlines()
 		for line in lines:
-			data.append(json.loads(line))
-
-
-text = []		
-for i in range(len(data)):
-	text.append((data[i]['text']).lower())
-
-del data
-gc.collect()
-
-words = re.findall(r'\w+', text[0])
-last_cnt = Counter(words)
-cnt = Counter(words)
-fre_result = Counter(words)
-count = 0
-for i in range(len(text)):
-	if i+1 >= len(text):
-		break
-	words = re.findall(r'\w+', text[i+1])
-	cnt = Counter(words)
-	fre_result = cnt+fre_result
-	#print(str(len(cnt))+"   shit")
-	#print(len(fre_result))
-	#print(cnt.most_common(5))
-	print(count)
-	last_cnt = cnt
+			tmpstr = json.loads(line)
+			if tmpstr['id'] == '':
+				continue
+			id.append(tmpstr['id'].lower())
+			return_lines.append(tmpstr[label])
 	
-	if count%10000 == 0:
-		write_txt(fre_result, count)
-		fre_result = Counter()
+	return id, return_lines
+
+
 	
-	count += 1
-		
-def write_txt(cnt, count):
-	f_write = io.open(output_path+'//frequences'+str(count)+'.txt','w',encoding='utf8')
-	for k,v in cnt.items():
-		f_write.write(str(k)+"\t"+str(v)+"\r\n")
-		f_write.flush()
-	f_write.close()
-
-fwrite = open("D://document//UCL//Data Mining//data//test.txt",'w')
-for k,v in cnt.items():
-	fwrite.write(str(k)+"\t"+str(v)+"\r\n")
-	fwrite.flush()
-fwrite.close()
-
-
-def read_all_wiki(dir_path):
-	files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
-	return files_name
-
 def term_frequency():
+	wiki_path = 'D://document//UCL//Data Mining//data//wiki-pages//wiki-001.jsonl'
 	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages'
-	files_name = read_all_wiki(dir_path)
-	text = []
-	data = []
+	output_path = 'D://document//UCL//Data Mining//results'
+	files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
 	
-	for i in range(len(files_name)):
-		with open(dir_path+'//'+files_name[i], 'r') as file:
-			lines = file.readlines()
-			for line in lines:
-				data.append(json.loads(line))
+	tmpstr = ""
+	for i in range(len(files_name)):	
+		id, doc = get_assigned_text(files_name[i],'text')
+		doc = str(doc)
+		doc = doc.replace('[','')
+		doc = doc.replace(']','')
+		tmpstr += doc.lower()
+		print(files_name[i]+' done')
+
+	words = re.findall(r'\w+', tmpstr)
+	cnt = Counter(words)
+	write_to_csv(cnt, 'frequency')
+	tmp = cnt.most_common()
+	draw_frequency(tmp, 100)
 	
-	for i in range(len(data)):
-		text.append((data[i]['text']).lower())
+def draw_frequency(fre_list, count):
+	x = []
+	y = []
+	for i in range(count):
+		x.append(fre_list[i][0])
+		y.append(fre_list[i][1])
 	
-	for i in range(len(text)):
-		words = re.findall(r'\w+', text[i])
-		cnt = Counter(words)
+	plt.title('Term Frequency')
+	plt.xlabel('Term')
+	plt.ylabel('Frequency')
+	plt.xticks(rotation=45)
+	plt.plot(x, y)
+	plt.show()
 	
-	f_write = io.open(dir_path+'//frequences.txt','w',encoding='utf8')
-	for k,v in cnt.items():
-		f_write.write(str(k)+"\t"+str(v)+"\r\n")
-		f_write.flush()
-	f_write.close()
+
+def write_to_csv(cnt, index):
+	output_path = 'D://document//UCL//Data Mining//results'
+	with io.open(output_path+'//'+str(index)+'.csv', 'w', encoding='utf8') as file:
+		writer = csv.writer(file)
+		for k,v in cnt.items():
+			writer.writerow([k, v])
+			
+def zip_law(count):
+	x = []
+	for i in range(len(tmp)):
+		x.append(tmp[i][1])
+
+	total = np.sum(np.array(x))
+	words_num = len(tmp)
+
+	x = tmp
+	prob = []
+	r = []
+	for i in range(len(x)):
+		probability = tmp[i][1]/total
+		rp = (i+1) * probability
+		prob.append(probability)
+		r.append(rp)
+
+	with io.open(output_path+'//zip_law.csv', 'w', encoding='utf8') as file:
+		writer = csv.writer(file)
+		for i in range(len(x)):
+			writer.writerow([tmp[i][0], tmp[i][1], i, prob[i], r[i]])
+
+	x_plt = range(count)
+	y_plt = prob[:count]
+	plt.title('Zip law')
+	plt.xlabel('Rank')
+	plt.ylabel('Probability')
+	plt.plot(x_plt, y_plt)
+	plt.show()

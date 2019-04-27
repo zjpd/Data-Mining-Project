@@ -17,21 +17,6 @@ wiki_path = 'D://document//UCL//Data Mining//data//wiki-pages//wiki-001.jsonl'
 train_path = 'D://document//UCL//Data Mining//data'
 claim_id = [75397, 150448, 214861, 156709, 129629, 33078, 6744, 226034, 40190, 76253]
 
-data = []
-with open(train_path+'//train.jsonl', 'r') as file:
-	lines = file.readlines()
-	for line in lines:
-		tmp = json.loads(line)
-		for id in claim_id:
-			if tmp['id'] == id:
-				data.append(tmp)
-
-claim = []
-for line in data:
-	claim.append(list(set(re.findall(r'\w+', line['claim'].lower()))))
-
-del data
-gc.collect()
 
 
 doc_len = 0
@@ -93,24 +78,46 @@ testtmp = sorted((value,key) for (key,value) in testtmp.items())
 	the method will return a dictionary contains all documetns in a wiki-page and their id
 	'id': document
 '''
-def get_assigned_text(index):
+def get_assigned_text(index, label):
 	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages//'
-	document = []
-	doc_len = 0
+	id = []
+	return_lines = []
 	
 	with open(dir_path+index, 'r') as file:
 		lines = file.readlines()
 		for line in lines:
-			doc_len += 1
-			tmp = {}
 			tmpstr = json.loads(line)
 			if tmpstr['id'] == '':
 				continue
-			tmp[tmpstr['id']] = tmpstr['text'].lower()
-			document.append(tmp)
-			#doc_len += 1
+			id.append(tmpstr['id'].lower())
+			return_lines.append(tmpstr[label])
 	
-	return document, doc_len
+	return id, return_lines
+
+	
+def get_claim():
+	claim_id = [75397, 150448, 214861, 156709, 129629, 33078, 6744, 226034, 40190, 76253]
+	train_path = 'D://document//UCL//Data Mining//data'
+	claim = []
+	
+	data = []
+	with open(train_path+'//train.jsonl', 'r') as file:
+		lines = file.readlines()
+		for line in lines:
+			tmp = json.loads(line)
+			for id in claim_id:
+				if tmp['id'] == id:
+					data.append(tmp)
+
+	for line in data:
+		tmp = line['claim'].lower()
+		claim.append(list(set(re.findall(r'\w+', tmp))))
+
+	del data
+	gc.collect()
+		
+	return claim
+
 
 '''
 	query is a list contains all the words in the query
@@ -130,11 +137,51 @@ def unigram_query_likelihood_model(query, document, doc_len):
 	
 	for k,v in probability.items():
 		result = result * (v/doc_len)
-		print (k+': '+ str(v) +' '+ str(result))
+		#print (k+': '+ str(v) +' '+ str(result))
 	
 	return result
 
+def impl_unigram():
+output_path = 'D://document//UCL//Data Mining//results'
+claim = get_claim()
+for i in range(len(claim)):
+	uni_res = []
+	doc_id = {}
+	for k in range(10):
+		uni_res.append(0)
+	
+	
+	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages//'
+	files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
+	for name in files_name:
+		id, doc = get_assigned_text(name, 'text')
+		for j in range(len(doc)):
+			tmpwords = re.findall(r'\w+', doc[j])
+			tmpcnt = Counter(tmpwords)
+			#print(str(j)+" "+doc[j])
+			if len(tmpwords) == 0:
+				continue
+			result = unigram_query_likelihood_model(claim[i], tmpcnt, len(tmpwords))
+			
+			doc_id[id[j]] = result
+		print(name+' done')
+	
+	tmp = {k: v for k, v in sorted(doc_id.items(), key=lambda x: x[1])}
+	count = 0
+	doc_id = {}
+	for k, v in tmp.items():
+		doc_id[k] = v
+		count += 1
+		if count >= 10:
+			break
+	
+	with io.open(output_path+'//unigram'+str(i)+'.txt', 'w', encoding='utf8') as file:
+		for k,v in doc_id.items():
+			file.write(str(k)+"\t"+str(v)+"\n")
+			print(k,v)
+	print('claim '+str(i)+' done')
 
+	
 def laplace_smoothing(query, document, doc_len):
 	probability = {}
 	uni_word = set()
