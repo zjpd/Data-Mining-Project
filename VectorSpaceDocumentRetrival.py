@@ -131,17 +131,39 @@ def get_claim_tfidf(claim):
 		claim_tfidf.append(tmpdict)
 		
 	return claim_tfidf, claim_idf
+		
 
 '''
-	claim is the word in that claim, and it is a list
-	document is a string, doc_len is the length of all documents in the collection
-	
+	claim and text should be dicts, that claim: 'tfidf', text:'tfidf' of each word
 '''
-def cal_tfidf(claim, claim_idf, claim_tfidf):
+def get_cosine(claim, text):
+	intersection = set(claim.keys()) & set(text.keys())
+	numerator = 0
+	for word in intersection:
+		numerator += (claim[word] * text[word])
+		
+	var1 = 0
+	var2 = 0
+	for word in claim.keys():
+		var1 += math.pow(claim[word], 2)
+	for word in text.keys():
+		var2 += math.pow(text[word], 2)
+	
+	denomiator = math.sqrt(var1) * math.sqrt(var2)
+	
+	if numerator == 0:
+		return 0.0
+	else:
+		return numerator / denomiator
+
+		
+def cal_tfidf():
 	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages'
 	output_path = 'D://document//UCL//Data Mining//results'
 	files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
-
+	claim = get_claim()
+	claim_tfidf, claim_idf = get_claim_tfidf(claim)
+	
 	for i in range(len(claim)):
 		cos_res = []
 		doc_id = {}
@@ -179,41 +201,6 @@ def cal_tfidf(claim, claim_idf, claim_tfidf):
 				file.write(str(k)+"\t"+str(v)+"\n")
 				print(k,v)
 		print('claim '+str(i)+' done')
-			
-	return doc_tfidf
-		
-
-
-
-'''
-	claim and text should be dicts, that claim: 'tfidf', text:'tfidf' of each word
-'''
-def get_cosine(claim, text):
-	intersection = set(claim.keys()) & set(text.keys())
-	numerator = 0
-	for word in intersection:
-		numerator += (claim[word] * text[word])
-		
-		#print ('word: '+word+' value: '+str(claim[word] * text[word]))
-		#print('numerator: '+str(numerator))
-		#print()
-	
-	var1 = 0
-	var2 = 0
-	for word in claim.keys():
-		var1 += math.pow(claim[word], 2)
-	for word in text.keys():
-		var2 += math.pow(text[word], 2)
-	
-	denomiator = math.sqrt(var1) * math.sqrt(var2)
-	#print('denomiator: '+str(denomiator))
-	
-	if numerator == 0:
-		return 0.0
-	else:
-		return numerator / denomiator
-
-
 
 
 

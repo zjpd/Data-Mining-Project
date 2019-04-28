@@ -47,7 +47,6 @@ def get_train_data():
 		lines = file.readlines()
 		for line in lines:
 			tmp = json.loads(line)
-			if tmp['label'] == 'SUPPORTS' or tmp['label'] == 'REFUTES':
 			data.append(tmp)
 
 	data = data[:2000]
@@ -98,15 +97,17 @@ def get_train_data():
 			sentences[i][j] = re.findall(r'\w+', sentences[i][j].lower())
 		
 	x_tmp = []
-	y_train = []	#SUPPORTS -- 1  REFUTES -- 0
+	y_train = []	#SUPPORTS -- 1  REFUTES -- 0 NOT ENOU INFO -- 2
 	for i in range(len(data)):
 		tmpword = re.findall(r'\w+', data[i]['claim'].lower())
 		for j in range(len(sentences[i])):
 			x_tmp.append(tmpword + sentences[i][j])
 			if data[i]['label'] == 'SUPPORTS':
 				y_train.append(1)
-			else:
+			elif data[i]['label'] == 'REFUTES':
 				y_train.append(0)
+			else:
+				y_train.append(2)
 
 	x_tmp = x_tmp[:2000]
 	y_train = y_train[:2000]
@@ -150,7 +151,7 @@ def model_impl():
 	model.add(Dense(1, activation='sigmoid'))
 	model.summary()
 			
-	model.compile(loss='binary_crossentropy', optimizer='sgd', 
+	model.compile(loss='mae', optimizer='sgd', 
 		metrics=['accuracy', keras_metrics.precision(), keras_metrics.recall()])
 	model.fit(x_train, y_train, verbose=1, epochs=20, validation_data=(x_test, y_test))
 	model.save('lstm_model.h5')

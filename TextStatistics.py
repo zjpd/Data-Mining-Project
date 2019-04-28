@@ -12,8 +12,11 @@ from collections import Counter
 from nltk import word_tokenize
 from os import listdir
 from os.path import isfile, join
+from matplotlib import pyplot as plt
 
-
+#Get the documents from the path
+#return:	id -- the id of each document
+#			return_lines -- all of the information in that document
 def get_assigned_text(index, label):
 	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages//'
 	id = []
@@ -31,28 +34,10 @@ def get_assigned_text(index, label):
 	return id, return_lines
 
 
-	
-def term_frequency():
-	wiki_path = 'D://document//UCL//Data Mining//data//wiki-pages//wiki-001.jsonl'
-	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages'
-	output_path = 'D://document//UCL//Data Mining//results'
-	files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
-	
-	tmpstr = ""
-	for i in range(len(files_name)):	
-		id, doc = get_assigned_text(files_name[i],'text')
-		doc = str(doc)
-		doc = doc.replace('[','')
-		doc = doc.replace(']','')
-		tmpstr += doc.lower()
-		print(files_name[i]+' done')
 
-	words = re.findall(r'\w+', tmpstr)
-	cnt = Counter(words)
-	write_to_csv(cnt, 'frequency')
-	tmp = cnt.most_common()
-	draw_frequency(tmp, 100)
-	
+#plot the term frequencies into a line chart
+#fre_list -- the term frequency list
+#count -- how many terms would like to plot
 def draw_frequency(fre_list, count):
 	x = []
 	y = []
@@ -74,7 +59,9 @@ def write_to_csv(cnt, index):
 		writer = csv.writer(file)
 		for k,v in cnt.items():
 			writer.writerow([k, v])
-			
+
+#plot the term frequencies as the zipf's law
+#count -- how many terms would like to plot
 def zip_law(count):
 	x = []
 	for i in range(len(tmp)):
@@ -104,3 +91,24 @@ def zip_law(count):
 	plt.ylabel('Probability')
 	plt.plot(x_plt, y_plt)
 	plt.show()
+
+
+def term_frequency():
+	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages'
+	output_path = 'D://document//UCL//Data Mining//results'
+	files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
+	
+	tmpstr = ""
+	for i in range(len(files_name)):	
+		id, doc = get_assigned_text(files_name[i],'text')
+		doc = str(doc)
+		doc = doc.replace('[','')
+		doc = doc.replace(']','')
+		tmpstr += doc.lower()
+		print(files_name[i]+' done')
+
+	words = re.findall(r'\w+', tmpstr)
+	cnt = Counter(words)
+	write_to_csv(cnt, 'frequency')
+	tmp = cnt.most_common()
+	draw_frequency(tmp, 100)

@@ -13,17 +13,6 @@ from nltk import word_tokenize
 from os import listdir
 from os.path import isfile, join
 
-wiki_path = 'D://document//UCL//Data Mining//data//wiki-pages//wiki-001.jsonl'
-train_path = 'D://document//UCL//Data Mining//data'
-claim_id = [75397, 150448, 214861, 156709, 129629, 33078, 6744, 226034, 40190, 76253]
-
-
-
-doc_len = 0
-for k,v in document[0].items():
-	doc = re.findall(r'\w+', v)
-	doc_len = len(doc)
-	doc = dict(Counter(doc))
 
 def test_laplace():
 	train_path = 'D://document//UCL//Data Mining//data'
@@ -67,11 +56,6 @@ def test_laplace():
 		results.append(prob_result[-20:])
 		
 	return results
-
-testtmp = {}
-for i in range(20):
-	testtmp[i] = i
-testtmp = sorted((value,key) for (key,value) in testtmp.items())
 	
 '''
 	index is the file name of the assigned text to read
@@ -142,45 +126,88 @@ def unigram_query_likelihood_model(query, document, doc_len):
 	return result
 
 def impl_unigram():
-output_path = 'D://document//UCL//Data Mining//results'
-claim = get_claim()
-for i in range(len(claim)):
-	uni_res = []
-	doc_id = {}
-	for k in range(10):
-		uni_res.append(0)
+	output_path = 'D://document//UCL//Data Mining//results'
+	claim = get_claim()
+	for i in range(len(claim)):
+		uni_res = []
+		doc_id = {}
+		for k in range(10):
+			uni_res.append(0)
 	
 	
-	dir_path = 'D://document//UCL//Data Mining//data//wiki-pages//'
-	files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
-	for name in files_name:
-		id, doc = get_assigned_text(name, 'text')
-		for j in range(len(doc)):
-			tmpwords = re.findall(r'\w+', doc[j])
-			tmpcnt = Counter(tmpwords)
-			#print(str(j)+" "+doc[j])
-			if len(tmpwords) == 0:
-				continue
-			result = unigram_query_likelihood_model(claim[i], tmpcnt, len(tmpwords))
+		dir_path = 'D://document//UCL//Data Mining//data//wiki-pages//'
+		files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
+		for name in files_name:
+			id, doc = get_assigned_text(name, 'text')
+			for j in range(len(doc)):
+				tmpwords = re.findall(r'\w+', doc[j])
+				tmpcnt = Counter(tmpwords)
+				if len(tmpwords) == 0:
+					continue
+				result = unigram_query_likelihood_model(claim[i], tmpcnt, len(tmpwords))
 			
-			doc_id[id[j]] = result
-		print(name+' done')
+				doc_id[id[j]] = result
+			print(name+' done')
 	
-	tmp = {k: v for k, v in sorted(doc_id.items(), key=lambda x: x[1])}
-	count = 0
-	doc_id = {}
-	for k, v in tmp.items():
-		doc_id[k] = v
-		count += 1
-		if count >= 10:
-			break
+		tmp = {k: v for k, v in sorted(doc_id.items(), key=lambda x: x[1])}
+		count = 0
+		doc_id = {}
+		for k, v in tmp.items():
+			doc_id[k] = v
+			count += 1
+			if count >= 10:
+				break
 	
-	with io.open(output_path+'//unigram'+str(i)+'.txt', 'w', encoding='utf8') as file:
-		for k,v in doc_id.items():
-			file.write(str(k)+"\t"+str(v)+"\n")
-			print(k,v)
-	print('claim '+str(i)+' done')
+		with io.open(output_path+'//unigram'+str(i)+'.txt', 'w', encoding='utf8') as file:
+			for k,v in doc_id.items():
+				file.write(str(k)+"\t"+str(v)+"\n")
+				print(k,v)
+		print('claim '+str(i)+' done')
 
+#three choices of model_type: laplace, jelinek and dirichlet
+def impl_laplace_jeline_diri(model_type):
+	output_path = 'D://document//UCL//Data Mining//results'
+	claim = get_claim()
+	for i in range(len(claim)):
+		uni_res = []
+		doc_id = {}
+		for k in range(10):
+			uni_res.append(0)
+	
+	
+		dir_path = 'D://document//UCL//Data Mining//data//wiki-pages//'
+		files_name = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
+		for name in files_name:
+			id, doc = get_assigned_text(name, 'text')
+			for j in range(len(doc)):
+				tmpwords = re.findall(r'\w+', doc[j])
+				tmpcnt = Counter(tmpwords)
+				if len(tmpwords) == 0:
+					continue
+				if model_type == 'laplace':
+					result = laplace_smoothing(claim[i], tmpcnt, len(tmpwords))
+				elif: model_type == 'jelinek':
+					result = jelinek_smoothing(claim[i], tmpcnt, len(tmpwords))
+				elif: model_type == 'dirichlet':
+					result = dirichlet_smoothing(claim[i], tmpcnt, len(tmpwords))
+					
+				doc_id[id[j]] = result
+			print(name+' done')
+	
+		tmp = {k: v for k, v in sorted(doc_id.items(), key=lambda x: x[1])}
+		count = 0
+		doc_id = {}
+		for k, v in tmp.items():
+			doc_id[k] = v
+			count += 1
+			if count >= 10:
+				break
+	
+		with io.open(output_path+'//unigram'+str(i)+'.txt', 'w', encoding='utf8') as file:
+			for k,v in doc_id.items():
+				file.write(str(k)+"\t"+str(v)+"\n")
+				print(k,v)
+		print('claim '+str(i)+' done')
 	
 def laplace_smoothing(query, document, doc_len):
 	probability = {}
@@ -193,7 +220,6 @@ def laplace_smoothing(query, document, doc_len):
 			if word == k:
 				probability[word] += v
 	
-	#print ('uni word: '+str(len(uni_word)))
 	
 	for word in probability:
 		probability[word] += 1
@@ -202,7 +228,6 @@ def laplace_smoothing(query, document, doc_len):
 	
 	for k,v in probability.items():
 		result = result * (v/(doc_len+len(probability)))
-		#print (k+': '+ str(v) +' '+ str(v/(doc_len+len(uni_word))))
 	
 	return result
 
