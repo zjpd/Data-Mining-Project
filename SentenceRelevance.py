@@ -125,7 +125,7 @@ def get_test_data():
 
 	
 def get_word_vector(sentences, model):
-	x_train = np.zeros((len(sentences), 300))
+	matrix = np.zeros((len(sentences), 300))
 	for i in range(len(sentences)):
 		tmplist = []
 		for j in range(len(sentences[i])):
@@ -139,9 +139,9 @@ def get_word_vector(sentences, model):
 		
 		for k in range(len(tmplist)):
 			for l in range(300):
-				x_train[i][l] += tmplist[k][l][0]
+				matrix[i][l] += tmplist[k][l][0]
 		
-	return x_train
+	return matrix
 '''
 	return an evidences list.
 	data -- list, contains all the information retrieved from the train.jsonl
